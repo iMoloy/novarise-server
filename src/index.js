@@ -19,19 +19,9 @@ const PORT = process.env.PORT || 5000;
 // Enable CORS for Next.js Client
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-      "http://localhost:3001",
-      "http://127.0.0.1:3001",
-      "http://localhost:3002",
-      "http://127.0.0.1:3002",
-      "http://localhost:3003",
-      "http://127.0.0.1:3003"
-    ],
+    origin: "*", // Allows any origin, including Vercel deployments
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
   })
 );
 
@@ -53,17 +43,15 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "An unexpected server error occurred." });
 });
 
-// Establish Database Connection and Start Listening
-async function startServer() {
-  try {
-    await connectToDatabase();
-    app.listen(PORT, () => {
-      console.log(`NovaRise Server is listening on Port ${PORT}`);
-    });
-  } catch (error) {
-    console.error("Database connection failure. Server stopped.", error);
-    process.exit(1);
-  }
+// For Vercel, connect to DB on cold start
+connectToDatabase().catch(console.dir);
+
+// Start Server Locally if not in Vercel
+if (process.env.NODE_ENV !== "production") {
+  app.listen(PORT, () => {
+    console.log(`NovaRise Server is listening on Port ${PORT}`);
+  });
 }
 
-startServer();
+// Export for Vercel Serverless
+module.exports = app;
