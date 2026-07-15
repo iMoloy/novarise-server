@@ -2,6 +2,7 @@ const express = require("express");
 const { ObjectId } = require("mongodb");
 const { connectToDatabase } = require("../config/db");
 const { authenticateToken, requireRole } = require("../middlewares/auth");
+const { sendEmail, withdrawalApprovedEmail } = require("../utils/email");
 
 const router = express.Router();
 
@@ -159,6 +160,16 @@ router.put("/", authenticateToken, requireRole(["admin"]), async (req, res) => {
       time: new Date(),
       read: false,
     });
+
+    // Send Email to Creator
+    const creatorUser = await db.collection("users").findOne({ email: withdrawal.creator_email });
+    if (creatorUser) {
+      sendEmail(
+        withdrawal.creator_email,
+        `Your withdrawal of $${withdrawal.withdrawal_amount} has been approved!`,
+        withdrawalApprovedEmail(creatorUser.name, withdrawal.withdrawal_credit, withdrawal.withdrawal_amount)
+      );
+    }
 
     return res.status(200).json({ message: "Payout approved and creator credits debited." });
 

@@ -2,6 +2,7 @@ const express = require("express");
 const { ObjectId } = require("mongodb");
 const { connectToDatabase } = require("../config/db");
 const { authenticateToken, requireRole } = require("../middlewares/auth");
+const { sendEmail, campaignStatusEmail, newContributionEmail } = require("../utils/email");
 
 const router = express.Router();
 
@@ -198,6 +199,16 @@ router.put("/:id", authenticateToken, async (req, res) => {
         time: new Date(),
         read: false,
       });
+
+      // Send Email Notification to Creator
+      const creatorUser = await db.collection("users").findOne({ email: campaign.creator_email });
+      if (creatorUser) {
+        sendEmail(
+          campaign.creator_email,
+          `Your Campaign "${campaign.title}" has been ${status}`,
+          campaignStatusEmail(creatorUser.name, campaign.title, status)
+        );
+      }
 
       return res.status(200).json({ message: `Campaign status updated to ${status}.` });
 

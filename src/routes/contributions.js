@@ -2,6 +2,7 @@ const express = require("express");
 const { ObjectId } = require("mongodb");
 const { connectToDatabase } = require("../config/db");
 const { authenticateToken, requireRole } = require("../middlewares/auth");
+const { sendEmail, contributionStatusEmail, newContributionEmail } = require("../utils/email");
 
 const router = express.Router();
 
@@ -136,6 +137,13 @@ router.post("/", authenticateToken, requireRole(["supporter"]), async (req, res)
       read: false,
     });
 
+    // Send Email to Creator
+    sendEmail(
+      campaign.creator_email,
+      `New Contribution to "${campaign.title}"`,
+      newContributionEmail(campaign.creator_name, req.user.name, campaign.title, amount)
+    );
+
     return res.status(201).json({
       message: "Contribution submitted successfully. Awaiting creator review.",
       contributionId: result.insertedId.toString(),
@@ -199,6 +207,13 @@ router.put("/", authenticateToken, requireRole(["creator"]), async (req, res) =>
         read: false,
       });
 
+      // Send Email to Supporter
+      sendEmail(
+        contribution.supporter_email,
+        `Your contribution to "${contribution.campaign_title}" was approved!`,
+        contributionStatusEmail(contribution.supporter_name, contribution.campaign_title, contribution.contribution_amount, "approved", req.user.name)
+      );
+
       return res.status(200).json({ message: "Contribution approved and campaign raised credits updated." });
 
     } else {
@@ -222,6 +237,13 @@ router.put("/", authenticateToken, requireRole(["creator"]), async (req, res) =>
         time: new Date(),
         read: false,
       });
+
+      // Send Email to Supporter
+      sendEmail(
+        contribution.supporter_email,
+        `Your contribution to "${contribution.campaign_title}" was rejected`,
+        contributionStatusEmail(contribution.supporter_name, contribution.campaign_title, contribution.contribution_amount, "rejected", req.user.name)
+      );
 
       return res.status(200).json({ message: "Contribution rejected and supporter refunded." });
     }
