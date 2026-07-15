@@ -164,4 +164,62 @@ router.get("/me", authenticateToken, async (req, res) => {
   }
 });
 
+// 4. Google OAuth Login / Register (Firebase Social Sign-In)
+router.post("/google", async (req, res) => {
+  try {
+    const { name, email, photo_url, google_uid } = req.body;
+
+    if (!email || !google_uid) {
+      return res.status(400).json({ error: "Google credentials are required." });
+    }
+
+    const { db } = await connectToDatabase();
+
+    // Check if user already exists
+    let user = await db.collection("users").findOne({ email: email.toLowerCase() });
+
+    if (!user) {
+      // Create new user with default supporter role (they can contact admin for creator)
+      const newUser = {
+        name: name || email.split("@")[0],
+        email: email.toLowerCase(),
+        passwordHash: null, // Google users have no password
+        google_uid,
+        role: "supporter",
+        photo_url: photo_url || "",
+        credits: 50,
+        createdAt: new Date(),
+      };
+      const result = await db.collection("users").insertOne(newUser);
+      user = { ...newUser, _id: result.insertedId };
+    }
+
+    const payload = {
+      userId: user._id.toString(),
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
+
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" });
+
+    return res.status(200).json({
+      message: "Google login successful!",
+      token,
+      user: {
+        userId: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        photo_url: user.photo_url || "",
+        credits: user.credits,
+      },
+    });
+
+  } catch (error) {
+    console.error("Google login error:", error);
+    return res.status(500).json({ error: "Google login failed." });
+  }
+});
+
 module.exports = router;
