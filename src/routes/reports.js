@@ -72,4 +72,33 @@ router.post("/", authenticateToken, requireRole(["supporter"]), async (req, res)
   }
 });
 
+// 3. Export CSV Data Report (Admin / Creator)
+router.get("/export", authenticateToken, async (req, res) => {
+  try {
+    const { db } = await connectToDatabase();
+    let query = {};
+    if (req.user.role === "creator") {
+      query.creator_email = req.user.email.toLowerCase();
+    }
+
+    const campaigns = await db.collection("campaigns").find(query).toArray();
+    let csvHeader = "ID,Title,Category,Funding Goal,Amount Raised,Status,Creator Email\n";
+    let csvRows = campaigns
+      .map(
+        (c) =>
+          `"${c._id}","${c.title.replace(/"/g, '""')}","${c.category}",${c.funding_goal},${c.amount_raised},"${c.status}","${c.creator_email}"`
+      )
+      .join("\n");
+
+    const csvContent = csvHeader + csvRows;
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", 'attachment; filename="novarise_campaigns_report.csv"');
+    return res.status(200).send(csvContent);
+  } catch (error) {
+    console.error("GET export CSV server error:", error);
+    return res.status(500).json({ error: "Failed to export report CSV." });
+  }
+});
+
 module.exports = router;
