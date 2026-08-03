@@ -76,6 +76,15 @@ router.get("/:id", async (req, res) => {
       { id: "m3", title: "Final Distribution & Backer Shipping", percentage: 20, status: "pending" },
     ];
 
+    const reward_tiers = campaign.reward_tiers || [
+      { id: "t1", title: "Early Bird Supporter", min_credits: campaign.minimum_contribution || 50, reward_description: "Early access pass + Digital Backer Badge" },
+      { id: "t2", title: "VIP Launchpad Innovator", min_credits: (campaign.minimum_contribution || 50) * 4, reward_description: "Exclusive physical reward box + VIP Supporter badge" },
+    ];
+
+    const updates = campaign.updates || [
+      { id: "u1", title: "🚀 Campaign Launched Successfully!", content: "We are thrilled to launch our campaign on NovaRise! Stay tuned for dev logs.", date: campaign.createdAt ? campaign.createdAt.toISOString() : new Date().toISOString() },
+    ];
+
     return res.status(200).json({
       campaign: {
         id: campaign._id.toString(),
@@ -92,6 +101,8 @@ router.get("/:id", async (req, res) => {
         creator_name: campaign.creator_name,
         creator_email: campaign.creator_email,
         milestones: milestones,
+        reward_tiers: reward_tiers,
+        updates: updates,
         createdAt: campaign.createdAt.toISOString(),
       },
     });
@@ -335,6 +346,42 @@ router.post("/:id/milestones", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error("POST milestones error:", error);
     return res.status(500).json({ error: "Failed to update milestone status." });
+  }
+});
+
+// Post Campaign DevLog Update (Creator only)
+router.post("/:id/updates", authenticateToken, requireRole(["creator"]), async (req, res) => {
+  try {
+    const { title, content } = req.body;
+    if (!title || !content) {
+      return res.status(400).json({ error: "Title and content are required for campaign updates." });
+    }
+
+    const { db } = await connectToDatabase();
+    const campaign = await db.collection("campaigns").findOne(idFilter(req.params.id));
+    if (!campaign) {
+      return res.status(404).json({ error: "Campaign not found." });
+    }
+
+    const newUpdate = {
+      id: "u_" + Date.now(),
+      title,
+      content,
+      date: new Date().toISOString(),
+    };
+
+    const currentUpdates = campaign.updates || [];
+    const updatedList = [newUpdate, ...currentUpdates];
+
+    await db.collection("campaigns").updateOne(
+      idFilter(req.params.id),
+      { $set: { updates: updatedList } }
+    );
+
+    return res.json({ success: true, update: newUpdate, updates: updatedList });
+  } catch (error) {
+    console.error("POST campaign update log error:", error);
+    return res.status(500).json({ error: "Failed to publish campaign update." });
   }
 });
 
