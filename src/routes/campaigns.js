@@ -70,6 +70,12 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ error: "Campaign not found." });
     }
 
+    const milestones = campaign.milestones || [
+      { id: "m1", title: "Prototype Development & Verification", percentage: 40, status: "completed" },
+      { id: "m2", title: "Production & Component Sourcing", percentage: 40, status: "in_progress" },
+      { id: "m3", title: "Final Distribution & Backer Shipping", percentage: 20, status: "pending" },
+    ];
+
     return res.status(200).json({
       campaign: {
         id: campaign._id.toString(),
@@ -85,6 +91,7 @@ router.get("/:id", async (req, res) => {
         amount_raised: campaign.amount_raised,
         creator_name: campaign.creator_name,
         creator_email: campaign.creator_email,
+        milestones: milestones,
         createdAt: campaign.createdAt.toISOString(),
       },
     });
@@ -292,6 +299,42 @@ router.delete("/:id", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error("DELETE campaign server error:", error);
     return res.status(500).json({ error: "Failed to delete campaign." });
+  }
+});
+
+// Update Campaign Milestone status (Creator / Admin)
+router.post("/:id/milestones", authenticateToken, async (req, res) => {
+  try {
+    const { milestoneId, status } = req.body;
+    if (!milestoneId || !status) {
+      return res.status(400).json({ error: "milestoneId and status are required." });
+    }
+
+    const { db } = await connectToDatabase();
+    const campaign = await db.collection("campaigns").findOne(idFilter(req.params.id));
+    if (!campaign) {
+      return res.status(404).json({ error: "Campaign not found." });
+    }
+
+    const currentMilestones = campaign.milestones || [
+      { id: "m1", title: "Prototype Development & Verification", percentage: 40, status: "completed" },
+      { id: "m2", title: "Production & Component Sourcing", percentage: 40, status: "in_progress" },
+      { id: "m3", title: "Final Distribution & Backer Shipping", percentage: 20, status: "pending" },
+    ];
+
+    const updatedMilestones = currentMilestones.map((m) =>
+      m.id === milestoneId ? { ...m, status: status } : m
+    );
+
+    await db.collection("campaigns").updateOne(
+      idFilter(req.params.id),
+      { $set: { milestones: updatedMilestones } }
+    );
+
+    return res.json({ success: true, milestones: updatedMilestones });
+  } catch (error) {
+    console.error("POST milestones error:", error);
+    return res.status(500).json({ error: "Failed to update milestone status." });
   }
 });
 
