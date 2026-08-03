@@ -12,6 +12,7 @@ const usersRouter = require("./routes/users");
 const reportsRouter = require("./routes/reports");
 const notificationsRouter = require("./routes/notifications");
 const paymentsRouter = require("./routes/payments");
+const aiRouter = require("./routes/ai");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -36,6 +37,7 @@ app.use("/api/users", usersRouter);
 app.use("/api/reports", reportsRouter);
 app.use("/api/notifications", notificationsRouter);
 app.use("/api/payment", paymentsRouter);
+app.use("/api/ai", aiRouter);
 
 // Global Error Handler
 app.use((err, req, res, next) => {
