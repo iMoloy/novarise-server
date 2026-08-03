@@ -2,6 +2,7 @@ const express = require("express");
 const { ObjectId } = require("mongodb");
 const { connectToDatabase } = require("../config/db");
 const { authenticateToken, requireRole } = require("../middlewares/auth");
+const { validateBody, campaignCreateSchema } = require("../middlewares/validate");
 const { sendEmail, campaignStatusEmail, newContributionEmail } = require("../utils/email");
 
 const router = express.Router();
@@ -95,7 +96,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // 3. Launch Campaign (Creator only)
-router.post("/", authenticateToken, requireRole(["creator"]), async (req, res) => {
+router.post("/", authenticateToken, requireRole(["creator"]), validateBody(campaignCreateSchema), async (req, res) => {
   try {
     const {
       title,

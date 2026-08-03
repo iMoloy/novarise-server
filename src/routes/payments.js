@@ -10,8 +10,11 @@ router.post("/checkout", authenticateToken, requireRole(["supporter"]), async (r
   try {
     const { credits, price } = req.body;
 
-    if (!credits || !price) {
-      return res.status(400).json({ error: "Credits and price details are required." });
+    const numCredits = Number(credits);
+    const numPrice = Number(price);
+
+    if (!numCredits || isNaN(numCredits) || numCredits <= 0 || !numPrice || isNaN(numPrice) || numPrice <= 0) {
+      return res.status(400).json({ error: "Invalid payment details. Credits and price must be positive numbers." });
     }
 
     const { db } = await connectToDatabase();

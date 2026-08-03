@@ -2,6 +2,7 @@ const express = require("express");
 const { ObjectId } = require("mongodb");
 const { connectToDatabase } = require("../config/db");
 const { authenticateToken, requireRole } = require("../middlewares/auth");
+const { validateBody, withdrawalCreateSchema } = require("../middlewares/validate");
 const { sendEmail, withdrawalApprovedEmail } = require("../utils/email");
 
 const router = express.Router();
@@ -49,7 +50,7 @@ router.get("/", authenticateToken, async (req, res) => {
 });
 
 // 2. Request withdrawal (Creator only)
-router.post("/", authenticateToken, requireRole(["creator"]), async (req, res) => {
+router.post("/", authenticateToken, requireRole(["creator"]), validateBody(withdrawalCreateSchema), async (req, res) => {
   try {
     const { credits_to_withdraw, payment_system, account_number } = req.body;
 
